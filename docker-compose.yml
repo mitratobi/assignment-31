@@ -1,0 +1,83 @@
+version: "3.8"
+
+# Assignment 31 - Multi-Container with Jenkins CI/CD + GitHub
+#
+#  GitHub → Jenkins :8080 → Build & Deploy
+#                               ↓
+#  [frontend :3000] → [backend :5000] → [mongodb :27017]
+#   Container 1         Container 2       Container 3
+#   Container 4: Jenkins :8080
+
+services:
+
+  mongodb:
+    image: mongo:7
+    container_name: mongo_db
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: librarydb
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: react_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: jenkins_ci
+    restart: always
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - app-network
+
+volumes:
+  mongo-data:
+    driver: local
+  jenkins-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
