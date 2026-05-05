@@ -12,19 +12,19 @@ pipeline {
 
         stage('Build Images') {
             steps {
-                sh 'docker compose build'
+                sh 'docker compose build mongodb backend frontend'
             }
         }
 
         stage('Deploy') {
             steps {
-                sh 'docker compose up -d'
+                sh 'docker compose up -d mongodb backend frontend'
             }
         }
 
         stage('Verify') {
             steps {
-                sh 'docker ps'
+                sh 'docker compose ps'
             }
         }
     }
